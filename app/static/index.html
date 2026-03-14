@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Homelab Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="header">
+        <div>
+          <h1>Homelab Dashboard</h1>
+          <p class="subtitle">Suivi simple des ressources du serveur</p>
+        </div>
+        <div class="mode-panel">
+          <span id="mode-indicator" class="badge">Mode réel</span>
+          <button id="toggle-mode-btn" type="button">Passer en mode démo</button>
+        </div>
+      </header>
+
+      <section class="grid" aria-label="Statistiques système">
+        <article class="card">
+          <h2>CPU</h2>
+          <p id="cpu-value" class="value">-- %</p>
+        </article>
+
+        <article class="card">
+          <h2>RAM</h2>
+          <p id="ram-value" class="value">-- %</p>
+        </article>
+
+        <article class="card">
+          <h2>Disque</h2>
+          <p id="disk-value" class="value">-- %</p>
+        </article>
+
+        <article class="card">
+          <h2>Uptime</h2>
+          <p id="uptime-value" class="value">--</p>
+        </article>
+      </section>
+
+      <p id="error-message" class="error" role="alert"></p>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
