@@ -3,47 +3,1119 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Homelab Dashboard</title>
-    <link rel="stylesheet" href="/static/style.css" />
+    <title>Smart Home Liquid Glass Dashboard</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+      integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <style>
+      /* ==============================
+         1) Design Tokens / Theme
+      ============================== */
+      :root {
+        --bg-overlay: rgba(0, 0, 0, 0.42);
+        --glass-bg: rgba(255, 255, 255, 0.08);
+        --glass-border: rgba(255, 255, 255, 0.24);
+        --glass-strong: rgba(255, 255, 255, 0.14);
+        --text: #f4f8ff;
+        --muted: #b4c3d8;
+        --accent: #8eb8ff;
+        --ok: #63e286;
+        --warn: #facc77;
+        --danger: #ffa1a1;
+        --led-color: #7ec6ff;
+        --radius-xl: 1.75rem;
+        --radius-lg: 1.2rem;
+        --radius-md: 0.9rem;
+        --anim: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+
+      body {
+        font-family: Inter, "SF Pro Display", "Segoe UI", sans-serif;
+        color: var(--text);
+        background-image:
+          linear-gradient(var(--bg-overlay), var(--bg-overlay)),
+          url("https://images.unsplash.com/photo-1616594039964-3c8f2f60f8f3?auto=format&fit=crop&w=2400&q=80");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+      }
+
+      .app {
+        width: min(96vw, 110rem);
+        margin: 1rem auto;
+        padding: 0.7rem;
+      }
+
+      .glass {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        backdrop-filter: blur(25px) saturate(160%);
+        -webkit-backdrop-filter: blur(25px) saturate(160%);
+        box-shadow: 0 1rem 2.2rem rgba(0, 0, 0, 0.28);
+      }
+
+      .interactive {
+        transition: var(--anim);
+      }
+
+      .interactive:hover,
+      .interactive:focus-visible,
+      .interactive.touch-active {
+        filter: brightness(1.1);
+        transform: scale(1.03);
+        box-shadow: 0 0 0.85rem rgba(160, 200, 255, 0.35), 0 1.2rem 2rem rgba(0, 0, 0, 0.28);
+      }
+
+      /* Ripple */
+      .ripple {
+        position: relative;
+        overflow: hidden;
+        isolation: isolate;
+      }
+
+      .ripple::after {
+        content: "";
+        position: absolute;
+        left: var(--rx, 50%);
+        top: var(--ry, 50%);
+        width: 0.2rem;
+        height: 0.2rem;
+        border-radius: 50%;
+        transform: translate(-50%, -50%) scale(0);
+        background: rgba(255, 255, 255, 0.65);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .ripple.rippling::after {
+        animation: ripple 560ms ease-out;
+      }
+
+      @keyframes ripple {
+        0% {
+          opacity: 0.9;
+          transform: translate(-50%, -50%) scale(0);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(28);
+        }
+      }
+
+      /* ==============================
+         2) Top Navigation Pills
+      ============================== */
+      .top-pills {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        width: max-content;
+        margin: 0 auto 0.9rem;
+        padding: 0.45rem;
+        border-radius: 999px;
+      }
+
+      .pill {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        border-radius: 999px;
+        padding: 0.45rem 0.82rem;
+        font-size: 0.86rem;
+        cursor: pointer;
+        transition: var(--anim);
+      }
+
+      .pill.active {
+        background: rgba(255, 255, 255, 0.92);
+        color: #0f1b2a;
+        box-shadow: 0 0.35rem 0.85rem rgba(255, 255, 255, 0.35);
+      }
+
+      /* ==============================
+         3) Main Shell + Sidebar
+      ============================== */
+      .shell {
+        border-radius: var(--radius-xl);
+        padding: 0.75rem;
+        display: grid;
+        grid-template-columns: 3.4rem 1fr;
+        gap: 0.7rem;
+      }
+
+      .sidebar {
+        border-radius: 2rem;
+        padding: 0.4rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: center;
+        align-self: center;
+      }
+
+      .icon-btn {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.08);
+        color: #e8f1ff;
+        cursor: pointer;
+        transition: var(--anim);
+      }
+
+      .icon-btn.active {
+        background: rgba(255, 255, 255, 0.94);
+        color: #142235;
+      }
+
+      /* ==============================
+         4) Grid Layout (Desktop)
+      ============================== */
+      .grid {
+        display: grid;
+        grid-template-columns: 1.08fr 1.1fr 0.95fr;
+        gap: 0.7rem;
+      }
+
+      .col {
+        display: grid;
+        gap: 0.7rem;
+        align-content: start;
+      }
+
+      .card {
+        border-radius: var(--radius-lg);
+        padding: 0.8rem;
+      }
+
+      .card h3 {
+        margin: 0 0 0.45rem;
+        font-size: clamp(0.95rem, 1.2vw, 1.05rem);
+        font-weight: 550;
+      }
+
+      .sub {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      /* Meta + Stats */
+      .meta-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.6rem;
+      }
+
+      .meta-head h1 {
+        margin: 0;
+        font-size: clamp(1.15rem, 2.25vw, 2rem);
+      }
+
+      .clock {
+        text-align: right;
+      }
+
+      .clock .time {
+        font-size: clamp(1rem, 2vw, 1.35rem);
+        font-weight: 620;
+      }
+
+      .stats-list {
+        list-style: none;
+        margin: 0.7rem 0 0;
+        padding: 0;
+        display: grid;
+        gap: 0.44rem;
+      }
+
+      .stats-list li {
+        display: flex;
+        justify-content: space-between;
+        border-radius: var(--radius-md);
+        padding: 0.45rem 0.55rem;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.11);
+      }
+
+      /* Weather */
+      .weather-main {
+        margin-top: 0.4rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .temp-big {
+        font-size: clamp(2rem, 4.8vw, 3rem);
+        font-weight: 630;
+      }
+
+      .sun-icon {
+        font-size: 1.5rem;
+        animation: spin 8s linear infinite;
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      .weather-details,
+      .forecast {
+        margin-top: 0.55rem;
+        display: grid;
+        gap: 0.4rem;
+      }
+
+      .weather-details {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .forecast {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+
+      .chip {
+        border-radius: 0.8rem;
+        text-align: center;
+        padding: 0.36rem;
+        font-size: 0.76rem;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      /* Video */
+      .video-frame {
+        margin-top: 0.5rem;
+        border-radius: 1rem;
+        min-height: 11.7rem;
+        position: relative;
+        overflow: hidden;
+        background:
+          linear-gradient(rgba(8, 15, 24, 0.22), rgba(8, 15, 24, 0.52)),
+          url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1500&q=80");
+        background-size: cover;
+        background-position: center;
+      }
+
+      .rec {
+        position: absolute;
+        top: 0.55rem;
+        left: 0.55rem;
+        border-radius: 999px;
+        padding: 0.22rem 0.5rem;
+        font-size: 0.73rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: rgba(0, 0, 0, 0.46);
+      }
+
+      .dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        background: #ff2f2f;
+        animation: pulse 1s infinite;
+      }
+
+      @keyframes pulse {
+        0% { opacity: 0.35; transform: scale(0.82); }
+        60% { opacity: 1; transform: scale(1.12); }
+        100% { opacity: 0.35; transform: scale(0.82); }
+      }
+
+      /* Music */
+      .music {
+        display: grid;
+        grid-template-columns: 4.2rem 1fr;
+        gap: 0.65rem;
+        align-items: center;
+      }
+
+      .cover {
+        width: 4.2rem;
+        height: 4.2rem;
+        border-radius: 0.78rem;
+        background-image: url("https://upload.wikimedia.org/wikipedia/en/4/45/Never_Gonna_Give_You_Up_single_cover.jpg");
+        background-size: cover;
+        background-position: center;
+      }
+
+      .progress-wrap {
+        margin-top: 0.4rem;
+      }
+
+      .progress {
+        height: 0.34rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.18);
+        overflow: hidden;
+        position: relative;
+        cursor: pointer;
+        touch-action: none;
+      }
+
+      .progress > span {
+        display: block;
+        width: 52%;
+        height: 100%;
+        background: linear-gradient(90deg, #87b8ff, #c0dbff);
+      }
+
+      .progress-thumb {
+        position: absolute;
+        top: 50%;
+        left: 52%;
+        width: 0.7rem;
+        height: 0.7rem;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        background: #fff;
+        box-shadow: 0 0 0.55rem rgba(170, 206, 255, 0.9);
+      }
+
+      .controls {
+        margin-top: 0.42rem;
+        display: flex;
+        gap: 0.35rem;
+      }
+
+      .mini-btn {
+        width: 1.95rem;
+        height: 1.95rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.08);
+        color: #f0f6ff;
+        cursor: pointer;
+      }
+
+      /* Thermostat */
+      .thermo-wrap {
+        margin-top: 0.35rem;
+        display: grid;
+        place-items: center;
+      }
+
+      .thermo {
+        width: clamp(10.4rem, 20vw, 13rem);
+        aspect-ratio: 1;
+        border-radius: 50%;
+        position: relative;
+        background: conic-gradient(from 215deg, #5ea5ff, #86c1ff, #ffd397, #ff9f63, #5ea5ff);
+        padding: 0.62rem;
+        cursor: grab;
+        touch-action: none;
+      }
+
+      .thermo::before {
+        content: "";
+        position: absolute;
+        inset: 0.62rem;
+        border-radius: 50%;
+        background: rgba(11, 19, 30, 0.78);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+      }
+
+      .thermo-center {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        pointer-events: none;
+      }
+
+      .thermo-value {
+        font-size: clamp(1.6rem, 4vw, 2.4rem);
+        font-weight: 630;
+      }
+
+      .thermo-note {
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+
+      .thermo-knob {
+        position: absolute;
+        width: 0.95rem;
+        height: 0.95rem;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid #8bb9ff;
+        box-shadow: 0 0 0.7rem rgba(130, 177, 255, 0.75);
+      }
+
+      /* Smart TV + iOS toggles */
+      .apps {
+        margin-top: 0.35rem;
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+      }
+
+      .app-pill {
+        border-radius: 0.75rem;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.72rem;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+      }
+
+      .switch-row {
+        margin-top: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .switch-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.35rem 0.45rem;
+        border-radius: 0.75rem;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .switch {
+        width: 2.55rem;
+        height: 1.36rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.22);
+        position: relative;
+        cursor: pointer;
+        transition: var(--anim);
+      }
+
+      .switch::after {
+        content: "";
+        position: absolute;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        top: 0.12rem;
+        left: 0.16rem;
+        background: #fff;
+        transition: var(--anim);
+      }
+
+      .switch.on {
+        background: linear-gradient(90deg, #58da90, #79f0b0);
+      }
+
+      .switch.on::after {
+        transform: translateX(1.1rem);
+      }
+
+      /* LED Slider */
+      .led-card {
+        box-shadow: 0 0 1rem color-mix(in srgb, var(--led-color) 26%, transparent), 0 1rem 2rem rgba(0, 0, 0, 0.24);
+      }
+
+      .led-line {
+        margin-top: 0.65rem;
+      }
+
+      .led-track {
+        width: 100%;
+        height: 1rem;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #ff4545, #ffb347, #f8ff6b, #66ff8f, #65d4ff, #ad84ff, #ff55d7);
+        cursor: pointer;
+        position: relative;
+        touch-action: none;
+      }
+
+      .led-thumb {
+        position: absolute;
+        top: 50%;
+        left: 52%;
+        width: 1.15rem;
+        height: 1.15rem;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        border: 2px solid #fff;
+        background: #fff;
+        box-shadow: 0 0 0.65rem rgba(255, 255, 255, 0.95);
+      }
+
+      .led-preview {
+        margin-top: 0.45rem;
+        height: 2rem;
+        border-radius: 0.7rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .mini-grid {
+        margin-top: 0.55rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
+      }
+
+      .tiny {
+        border-radius: 0.85rem;
+        padding: 0.55rem;
+        background: rgba(255, 255, 255, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .error {
+        margin-top: 0.5rem;
+        color: #ffc1c1;
+        min-height: 1rem;
+        font-size: 0.84rem;
+      }
+
+      /* ==============================
+         5) Responsive Breakpoints
+      ============================== */
+      @media (max-width: 1024px) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .col.right {
+          grid-column: span 2;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .forecast {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 768px) {
+        .top-pills {
+          width: 100%;
+          overflow-x: auto;
+          justify-content: flex-start;
+        }
+
+        .shell {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          order: 2;
+          position: sticky;
+          bottom: 0.55rem;
+          z-index: 20;
+          flex-direction: row;
+          width: 100%;
+          justify-content: center;
+          border-radius: 1.15rem;
+        }
+
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .col.right {
+          grid-column: auto;
+          grid-template-columns: 1fr;
+        }
+
+        .meta-head {
+          flex-direction: column;
+        }
+
+        .forecast {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+    </style>
   </head>
   <body>
-    <main class="container">
-      <header class="header">
-        <div>
-          <h1>Homelab Dashboard</h1>
-          <p class="subtitle">Suivi simple des ressources du serveur</p>
-        </div>
-        <div class="mode-panel">
-          <span id="mode-indicator" class="badge">Mode réel</span>
-          <button id="toggle-mode-btn" type="button">Passer en mode démo</button>
-        </div>
-      </header>
+    <div class="app">
+      <!-- Top room pills -->
+      <nav class="top-pills glass" aria-label="Rooms navigation">
+        <button class="pill interactive active" type="button">Living Room</button>
+        <button class="pill interactive" type="button">Bath Room</button>
+        <button class="pill interactive" type="button">Kitchen</button>
+        <button class="pill interactive" type="button">Bed Room</button>
+        <button class="pill interactive" type="button">Play Room</button>
+      </nav>
 
-      <section class="grid" aria-label="Statistiques système">
-        <article class="card">
-          <h2>CPU</h2>
-          <p id="cpu-value" class="value">-- %</p>
-        </article>
+      <section class="shell glass">
+        <!-- Left app sidebar -->
+        <aside class="sidebar glass" aria-label="Sidebar apps">
+          <button class="icon-btn ripple interactive active" type="button" aria-label="Home"><i class="fa-solid fa-house"></i></button>
+          <button class="icon-btn ripple interactive" type="button" aria-label="Calendar"><i class="fa-regular fa-calendar"></i></button>
+          <button class="icon-btn ripple interactive" type="button" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></button>
+          <button class="icon-btn ripple interactive" type="button" aria-label="Browser"><i class="fa-solid fa-globe"></i></button>
+        </aside>
 
-        <article class="card">
-          <h2>RAM</h2>
-          <p id="ram-value" class="value">-- %</p>
-        </article>
+        <!-- Main responsive 3-column grid -->
+        <section class="grid">
+          <!-- Left column: Meta + Weather + Music -->
+          <div class="col left">
+            <article class="card glass interactive">
+              <div class="meta-head">
+                <div>
+                  <h1>Smart Home Dashboard</h1>
+                  <p class="sub">Spatial liquid-glass control center</p>
+                </div>
+                <div class="clock">
+                  <div id="clock-time" class="time">--:--:--</div>
+                  <div id="clock-date" class="sub">--</div>
+                </div>
+              </div>
 
-        <article class="card">
-          <h2>Disque</h2>
-          <p id="disk-value" class="value">-- %</p>
-        </article>
+              <ul class="stats-list">
+                <li><span>CPU</span><strong id="cpu-value">-- %</strong></li>
+                <li><span>RAM</span><strong id="ram-value">-- %</strong></li>
+                <li><span>Disk</span><strong id="disk-value">-- %</strong></li>
+                <li><span>Uptime</span><strong id="uptime-value">--</strong></li>
+              </ul>
+              <p id="error-message" class="error" role="alert"></p>
+            </article>
 
-        <article class="card">
-          <h2>Uptime</h2>
-          <p id="uptime-value" class="value">--</p>
-        </article>
+            <article class="card glass interactive">
+              <h3>Weather</h3>
+              <div class="weather-main">
+                <div class="temp-big"><span id="weather-temp">23</span>&deg;C</div>
+                <i class="fa-solid fa-cloud-sun-rain sun-icon"></i>
+              </div>
+              <div class="weather-details">
+                <div class="chip">Humidity: <strong>88%</strong></div>
+                <div class="chip">Wind: <strong>13km/h</strong></div>
+              </div>
+              <div class="forecast">
+                <div class="chip">Mon 22</div>
+                <div class="chip">Tue 23</div>
+                <div class="chip">Wed 24</div>
+                <div class="chip">Thu 21</div>
+                <div class="chip">Fri 22</div>
+              </div>
+            </article>
+
+            <article class="card glass interactive">
+              <h3>Music</h3>
+              <div class="music">
+                <div class="cover" aria-label="Album cover"></div>
+                <div>
+                  <strong>Rick Astley</strong>
+                  <p class="sub">Never Gonna Give You Up</p>
+
+                  <div class="progress-wrap">
+                    <div id="music-progress" class="progress" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="52" tabindex="0">
+                      <span id="music-fill"></span>
+                      <div id="music-thumb" class="progress-thumb"></div>
+                    </div>
+                  </div>
+
+                  <div class="controls">
+                    <button class="mini-btn ripple interactive" type="button"><i class="fa-solid fa-backward-step"></i></button>
+                    <button id="play-btn" class="mini-btn ripple interactive" type="button"><i class="fa-solid fa-play"></i></button>
+                    <button class="mini-btn ripple interactive" type="button"><i class="fa-solid fa-forward-step"></i></button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <!-- Center column: Video + Thermostat -->
+          <div class="col center">
+            <article class="card glass interactive">
+              <h3>Live Camera</h3>
+              <div class="video-frame">
+                <span class="rec"><span class="dot"></span> REC</span>
+              </div>
+            </article>
+
+            <article class="card glass interactive">
+              <h3>Air Conditioner</h3>
+              <div class="thermo-wrap">
+                <div id="thermo" class="thermo" role="slider" aria-valuemin="10" aria-valuemax="32" aria-valuenow="17" tabindex="0">
+                  <span id="thermo-knob" class="thermo-knob"></span>
+                  <div class="thermo-center">
+                    <div><span id="thermo-value" class="thermo-value">17</span>&deg;C</div>
+                    <div class="thermo-note">Drag or tap to adjust</div>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <!-- Right column: Smart TV + LED + Toggles -->
+          <div class="col right">
+            <article class="card glass interactive">
+              <h3>Smart TV</h3>
+              <div class="apps">
+                <span class="app-pill">Netflix</span>
+                <span class="app-pill">Disney+</span>
+                <span class="app-pill">YouTube</span>
+                <span class="app-pill">HBO</span>
+              </div>
+              <div class="switch-row">
+                <div class="switch-item"><span>TV Power</span><button class="switch ripple on" type="button" aria-pressed="true"></button></div>
+                <div class="switch-item"><span>Apple TV</span><button class="switch ripple on" type="button" aria-pressed="true"></button></div>
+                <div class="switch-item"><span>Cinema Mode</span><button class="switch ripple" type="button" aria-pressed="false"></button></div>
+              </div>
+            </article>
+
+            <article class="card glass led-card interactive">
+              <h3>Ambient LED</h3>
+              <div class="led-line">
+                <div id="led-track" class="led-track" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="52" tabindex="0">
+                  <span id="led-thumb" class="led-thumb"></span>
+                </div>
+                <div id="led-preview" class="led-preview"></div>
+              </div>
+
+              <div class="mini-grid">
+                <div class="tiny">
+                  <span><i class="fa-solid fa-wifi"></i> WiFi</span>
+                  <button class="switch ripple on" type="button" aria-pressed="true"></button>
+                </div>
+                <div class="tiny">
+                  <span><i class="fa-solid fa-microphone-lines"></i> Alexa</span>
+                  <button class="switch ripple" type="button" aria-pressed="false"></button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
       </section>
+    </div>
 
-      <p id="error-message" class="error" role="alert"></p>
-    </main>
+    <script>
+      // ==============================
+      // Helpers
+      // ==============================
+      const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
-    <script src="/static/app.js"></script>
+      function formatUptime(totalSeconds) {
+        const seconds = Number(totalSeconds);
+        if (Number.isNaN(seconds) || seconds < 0) return "--";
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        return `${days}d ${hours}h ${minutes}m`;
+      }
+
+      function animateNumber(from, to, duration, onUpdate) {
+        const start = performance.now();
+        function step(now) {
+          const p = clamp((now - start) / duration, 0, 1);
+          const eased = 1 - Math.pow(1 - p, 3);
+          const value = from + (to - from) * eased;
+          onUpdate(value);
+          if (p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      }
+
+      // ==============================
+      // Long-touch visual feedback
+      // ==============================
+      document.querySelectorAll(".interactive").forEach((el) => {
+        let pressTimer = null;
+        el.addEventListener("pointerdown", () => {
+          pressTimer = setTimeout(() => el.classList.add("touch-active"), 220);
+        });
+        const clear = () => {
+          clearTimeout(pressTimer);
+          el.classList.remove("touch-active");
+        };
+        el.addEventListener("pointerup", clear);
+        el.addEventListener("pointercancel", clear);
+        el.addEventListener("pointerleave", clear);
+      });
+
+      // ==============================
+      // Ripple effect
+      // ==============================
+      document.querySelectorAll(".ripple").forEach((el) => {
+        el.addEventListener("pointerdown", (e) => {
+          const rect = el.getBoundingClientRect();
+          const x = ((e.clientX - rect.left) / rect.width) * 100;
+          const y = ((e.clientY - rect.top) / rect.height) * 100;
+          el.style.setProperty("--rx", `${x}%`);
+          el.style.setProperty("--ry", `${y}%`);
+          el.classList.remove("rippling");
+          void el.offsetWidth;
+          el.classList.add("rippling");
+        });
+      });
+
+      // ==============================
+      // Top pills active state
+      // ==============================
+      document.querySelectorAll(".pill").forEach((pill) => {
+        pill.addEventListener("click", () => {
+          document.querySelectorAll(".pill").forEach((p) => p.classList.remove("active"));
+          pill.classList.add("active");
+        });
+      });
+
+      // ==============================
+      // Sidebar active state
+      // ==============================
+      document.querySelectorAll(".icon-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".icon-btn").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+        });
+      });
+
+      // ==============================
+      // Clock
+      // ==============================
+      const clockTime = document.getElementById("clock-time");
+      const clockDate = document.getElementById("clock-date");
+
+      function updateClock() {
+        const now = new Date();
+        clockTime.textContent = now.toLocaleTimeString("fr-FR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+        clockDate.textContent = now.toLocaleDateString("fr-FR", {
+          weekday: "long",
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        });
+      }
+
+      updateClock();
+      setInterval(updateClock, 1000);
+
+      // ==============================
+      // Fetch server stats
+      // ==============================
+      const cpuEl = document.getElementById("cpu-value");
+      const ramEl = document.getElementById("ram-value");
+      const diskEl = document.getElementById("disk-value");
+      const uptimeEl = document.getElementById("uptime-value");
+      const errorEl = document.getElementById("error-message");
+
+      async function fetchStats() {
+        try {
+          const res = await fetch("/api/stats", { cache: "no-store" });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          cpuEl.textContent = `${data.cpu_percent} %`;
+          ramEl.textContent = `${data.ram_percent} %`;
+          diskEl.textContent = `${data.disk_percent} %`;
+          uptimeEl.textContent = formatUptime(data.uptime_seconds);
+          errorEl.textContent = "";
+        } catch (err) {
+          errorEl.textContent = `Stats error: ${err.message}`;
+        }
+      }
+
+      fetchStats();
+      setInterval(fetchStats, 5000);
+
+      // ==============================
+      // iOS switches
+      // ==============================
+      document.querySelectorAll(".switch").forEach((sw) => {
+        sw.addEventListener("click", () => {
+          const on = sw.classList.toggle("on");
+          sw.setAttribute("aria-pressed", String(on));
+        });
+      });
+
+      // ==============================
+      // Thermostat radial slider
+      // ==============================
+      const thermo = document.getElementById("thermo");
+      const thermoKnob = document.getElementById("thermo-knob");
+      const thermoValue = document.getElementById("thermo-value");
+      let tempValue = 17;
+      let draggingThermo = false;
+
+      function updateThermoKnob() {
+        const normalized = (tempValue - 10) / 22;
+        const angle = normalized * 360;
+        const r = thermo.clientWidth / 2 - 8;
+        const rad = (angle * Math.PI) / 180;
+        const x = thermo.clientWidth / 2 + Math.cos(rad) * r;
+        const y = thermo.clientHeight / 2 + Math.sin(rad) * r;
+        thermoKnob.style.left = `${x}px`;
+        thermoKnob.style.top = `${y}px`;
+        thermo.setAttribute("aria-valuenow", String(tempValue));
+      }
+
+      function setThermoFromPointer(clientX, clientY) {
+        const rect = thermo.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = clientX - cx;
+        const dy = clientY - cy;
+        let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        angle = (angle + 360) % 360;
+        const target = Math.round(clamp(10 + (angle / 360) * 22, 10, 32));
+
+        const from = tempValue;
+        tempValue = target;
+        animateNumber(from, target, 130, (v) => {
+          thermoValue.textContent = String(Math.round(v));
+        });
+        updateThermoKnob();
+      }
+
+      thermo.addEventListener("pointerdown", (e) => {
+        draggingThermo = true;
+        thermo.setPointerCapture(e.pointerId);
+        setThermoFromPointer(e.clientX, e.clientY);
+      });
+
+      thermo.addEventListener("pointermove", (e) => {
+        if (!draggingThermo) return;
+        setThermoFromPointer(e.clientX, e.clientY);
+      });
+
+      thermo.addEventListener("pointerup", () => {
+        draggingThermo = false;
+      });
+
+      thermo.addEventListener("keydown", (e) => {
+        const from = tempValue;
+        if (e.key === "ArrowUp" || e.key === "ArrowRight") tempValue = clamp(tempValue + 1, 10, 32);
+        if (e.key === "ArrowDown" || e.key === "ArrowLeft") tempValue = clamp(tempValue - 1, 10, 32);
+        animateNumber(from, tempValue, 120, (v) => {
+          thermoValue.textContent = String(Math.round(v));
+        });
+        updateThermoKnob();
+      });
+
+      updateThermoKnob();
+      window.addEventListener("resize", updateThermoKnob);
+
+      // ==============================
+      // Music progress simulated + draggable
+      // ==============================
+      const playBtn = document.getElementById("play-btn");
+      const musicProgress = document.getElementById("music-progress");
+      const musicFill = document.getElementById("music-fill");
+      const musicThumb = document.getElementById("music-thumb");
+      let isPlaying = false;
+      let musicPct = 52;
+      let draggingMusic = false;
+
+      function renderMusicProgress() {
+        musicFill.style.width = `${musicPct}%`;
+        musicThumb.style.left = `${musicPct}%`;
+        musicProgress.setAttribute("aria-valuenow", String(Math.round(musicPct)));
+      }
+
+      function setMusicFromX(clientX) {
+        const rect = musicProgress.getBoundingClientRect();
+        musicPct = clamp(((clientX - rect.left) / rect.width) * 100, 0, 100);
+        renderMusicProgress();
+      }
+
+      playBtn.addEventListener("click", () => {
+        isPlaying = !isPlaying;
+        playBtn.innerHTML = isPlaying
+          ? '<i class="fa-solid fa-pause"></i>'
+          : '<i class="fa-solid fa-play"></i>';
+      });
+
+      setInterval(() => {
+        if (!isPlaying || draggingMusic) return;
+        musicPct += 0.7;
+        if (musicPct > 100) musicPct = 0;
+        renderMusicProgress();
+      }, 450);
+
+      musicProgress.addEventListener("pointerdown", (e) => {
+        draggingMusic = true;
+        musicProgress.setPointerCapture(e.pointerId);
+        setMusicFromX(e.clientX);
+      });
+
+      musicProgress.addEventListener("pointermove", (e) => {
+        if (!draggingMusic) return;
+        setMusicFromX(e.clientX);
+      });
+
+      musicProgress.addEventListener("pointerup", () => {
+        draggingMusic = false;
+      });
+
+      musicProgress.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight") musicPct = clamp(musicPct + 2, 0, 100);
+        if (e.key === "ArrowLeft") musicPct = clamp(musicPct - 2, 0, 100);
+        renderMusicProgress();
+      });
+
+      renderMusicProgress();
+
+      // ==============================
+      // Ambient LED slider + CSS var
+      // ==============================
+      const ledTrack = document.getElementById("led-track");
+      const ledThumb = document.getElementById("led-thumb");
+      const ledPreview = document.getElementById("led-preview");
+      let ledPct = 52;
+      let draggingLed = false;
+
+      function renderLed() {
+        ledThumb.style.left = `${ledPct}%`;
+        const hue = (ledPct / 100) * 360;
+        const color = `hsl(${hue}deg 92% 68%)`;
+        document.documentElement.style.setProperty("--led-color", color);
+        ledPreview.style.background = `linear-gradient(90deg, ${color}, rgba(255,255,255,0.65))`;
+        ledTrack.setAttribute("aria-valuenow", String(Math.round(ledPct)));
+      }
+
+      function setLedFromX(clientX) {
+        const rect = ledTrack.getBoundingClientRect();
+        ledPct = clamp(((clientX - rect.left) / rect.width) * 100, 0, 100);
+        renderLed();
+      }
+
+      ledTrack.addEventListener("pointerdown", (e) => {
+        draggingLed = true;
+        ledTrack.setPointerCapture(e.pointerId);
+        setLedFromX(e.clientX);
+      });
+
+      ledTrack.addEventListener("pointermove", (e) => {
+        if (!draggingLed) return;
+        setLedFromX(e.clientX);
+      });
+
+      ledTrack.addEventListener("pointerup", () => {
+        draggingLed = false;
+      });
+
+      ledTrack.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight") ledPct = clamp(ledPct + 2, 0, 100);
+        if (e.key === "ArrowLeft") ledPct = clamp(ledPct - 2, 0, 100);
+        renderLed();
+      });
+
+      renderLed();
+    </script>
   </body>
 </html>
