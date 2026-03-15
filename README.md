@@ -31,7 +31,6 @@ Le projet propose une expérience type "VisionOS" :
 - **Glass Engine** : panneau de réglage blur/opacité/saturation en temps réel
 - **Parallax Spatial** : profondeur 3D des widgets via `requestAnimationFrame`
 - **Undo / Redo** : `Ctrl+Z` / `Ctrl+Y` sur les changements utilisateur
-- **Audio feedback** : sons subtils pour boutons, slider et Alexa
 - **Staggered entrance** : apparition progressive des widgets au chargement
 
 ## Stack Technique
