@@ -49,37 +49,37 @@ body {
 body.home-bg {
   background-image:
     linear-gradient(hsl(0 0% 0% / 0.35), hsl(0 0% 0% / 0.35)),
-    url("/static/images/home.jpg");
+    url("https://images.unsplash.com/photo-1758448756207-54505680d130?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=2400");
 }
 
 body.living-bg {
   background-image:
     linear-gradient(hsl(0 0% 0% / 0.35), hsl(0 0% 0% / 0.35)),
-    url("/static/images/living-room.jpg");
+    url("https://images.unsplash.com/photo-1666877769199-bd1110d33a25?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=2400");
 }
 
 body.bath-bg {
   background-image:
     linear-gradient(hsl(0 0% 0% / 0.35), hsl(0 0% 0% / 0.35)),
-    url("/static/images/bath-room.jpg");
+    url("https://images.unsplash.com/photo-1695002817411-203c7f19dfa3?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=2400");
 }
 
 body.kitchen-bg {
   background-image:
     linear-gradient(hsl(0 0% 0% / 0.35), hsl(0 0% 0% / 0.35)),
-    url("/static/images/kitchen.jpg");
+    url("https://images.unsplash.com/photo-1657524497227-66242be7ee6e?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=2400");
 }
 
 body.bed-bg {
   background-image:
     linear-gradient(hsl(0 0% 0% / 0.35), hsl(0 0% 0% / 0.35)),
-    url("/static/images/bed-room.jpg");
+    url("https://images.unsplash.com/photo-1651766231012-8d8a4b2e20dc?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=2400");
 }
 
 body.play-bg {
   background-image:
     linear-gradient(hsl(0 0% 0% / 0.35), hsl(0 0% 0% / 0.35)),
-    url("/static/images/play-room.jpg");
+    url("https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=2400");
 }
 
 .room-panel[data-room="Living Room"] .widget-card {

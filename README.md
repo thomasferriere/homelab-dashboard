@@ -76,6 +76,7 @@ Ouvre ensuite : `http://127.0.0.1:8000`
 1. Changer le fond principal :
    - Fichier : `app/static/style.css`
    - Zone : `body { background-image: ... }`
+   - Les fonds par pièce utilisent aussi des URLs Unsplash (`body.home-bg`, `body.living-bg`, etc.)
 
 2. Changer les images widgets (caméra, album art) :
    - Fichier : `app/static/style.css`
