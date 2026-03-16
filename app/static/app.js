@@ -11,7 +11,80 @@ const STORAGE_KEY = "liquid_glass_smart_home_v1";
 const STATS_INTERVAL_MS = 5000;
 
 const DEFAULT_DATA = {
-  room: "Living Room",
+  room: "Home",
+  home: {
+    backupTime: "04:32",
+    backupStatus: "OK",
+    alertsCount: 1,
+    alertsNote: "Caméra garage hors ligne.",
+    networkPing: 18,
+    networkDown: 312,
+    networkUp: 42,
+    energyKwh: 12.4,
+    energyCost: 3.2,
+    energyPct: 64,
+  },
+  living: {
+    presenceLast: "2 min",
+    airCo2: 620,
+    airHumidity: 48,
+    airTemp: 22.5,
+    mainLight: 72,
+    tvTime: "1h 25m",
+  },
+  bath: {
+    waterTemp: 37,
+    waterHardness: 14,
+    waterToday: 86,
+    waterWeek: 420,
+    waterTodayPct: 45,
+    waterWeekPct: 62,
+    ventThreshold: 60,
+    morningReminder: "07:30",
+    morningMinutes: 12,
+    mirrorTempK: 4200,
+  },
+  kitchen: {
+    smokeStatus: "OK",
+    airCo2: 540,
+    airPm: 8,
+    airHumidity: 45,
+    ovenKwh: 1.2,
+    fridgeKwh: 0.6,
+    binRecycle: "Jeu",
+    binTri: "Mar",
+    binOut: "Ce soir",
+  },
+  bed: {
+    nightStart: "22:30",
+    roomTemp: 21.1,
+    roomTempSet: 20,
+    airCo2: 520,
+    airHumidity: 46,
+    curtainPercent: 55,
+    ambientLight: 30,
+    ambientWarmth: 4200,
+    alarmsCount: 2,
+    alarm1: "06:30 · Réveil principal",
+    alarm2: "07:00 · Backup",
+    sleepDuration: "7h 42m",
+    sleepAwakenings: 2,
+    whiteNoiseLevel: 40,
+  },
+  play: {
+    cpuTemp: 72,
+    gpuTemp: 64,
+    cpuTempPct: 72,
+    gpuTempPct: 64,
+    alerts: 0,
+    ping: 18,
+    jitter: 2,
+    consoleFree: 190,
+    consoleUsed: 310,
+    consoleFreePct: 38,
+    consoleUsedPct: 62,
+    audioProfile: "game",
+  },
   weather: {
     tempC: 23,
     humidity: 88,
@@ -42,9 +115,26 @@ const DEFAULT_DATA = {
     cinemaMode: false,
     wifi: true,
     alexa: false,
+    sleep: false,
+    away: false,
+    security: false,
+    homeMode: false,
+    awayMode: false,
+    readingLight: false,
+    movieNight: false,
+    readingScene: false,
+    relaxScene: false,
+    streamObs: false,
+    streamLight: false,
+    streamMulti: false,
     sunrise: false,
     towelWarmer: false,
     streamMode: false,
+    nightMode: false,
+    whiteNoise: false,
+    bathSpa: false,
+    bathClean: false,
+    bathDry: false,
   },
   stats: {
     cpu: null,
@@ -61,6 +151,7 @@ const DEFAULT_DATA = {
 };
 
 const ROOM_THEMES = {
+  Home: { hue: 210, sat: 40, light: 16 },
   "Living Room": { hue: 210, sat: 40, light: 16 },
   "Bath Room": { hue: 192, sat: 28, light: 18 },
   Kitchen: { hue: 34, sat: 46, light: 18 },
@@ -113,6 +204,12 @@ function saveState(state) {
 function buildPersistedSnapshot() {
   return {
     room: SMART_HOME_DATA.room,
+    home: { ...SMART_HOME_DATA.home },
+    living: { ...SMART_HOME_DATA.living },
+    bath: { ...SMART_HOME_DATA.bath },
+    kitchen: { ...SMART_HOME_DATA.kitchen },
+    bed: { ...SMART_HOME_DATA.bed },
+    play: { ...SMART_HOME_DATA.play },
     music: { ...SMART_HOME_DATA.music },
     hvac: { ...SMART_HOME_DATA.hvac },
     led: { ...SMART_HOME_DATA.led },
@@ -180,12 +277,31 @@ const dom = {
   glassOpacity: document.getElementById("glass-opacity"),
   glassSat: document.getElementById("glass-sat"),
   randomThemeBtn: document.getElementById("random-theme-btn"),
+  quickPanel: document.getElementById("quick-panel"),
+  quickPanelTitle: document.getElementById("quick-panel-title"),
+  quickPanelBody: document.getElementById("quick-panel-body"),
+  quickPanelClose: document.getElementById("quick-panel-close"),
 };
 
 let roomDom = {};
+let activeQuickApp = null;
 
 function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v));
+}
+
+function getByPath(obj, path) {
+  return path.split(".").reduce((acc, key) => (acc ? acc[key] : undefined), obj);
+}
+
+function setByPath(obj, path, value) {
+  const parts = path.split(".");
+  const last = parts.pop();
+  const target = parts.reduce((acc, key) => {
+    if (!acc[key] || typeof acc[key] !== "object") acc[key] = {};
+    return acc[key];
+  }, obj);
+  target[last] = value;
 }
 
 function formatUptime(totalSeconds) {
@@ -206,6 +322,125 @@ function animateNumber(from, to, duration, onUpdate) {
     if (p < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
+}
+
+function buildQuickPanelContent(appId) {
+  const w = SMART_HOME_DATA.weather;
+  const h = SMART_HOME_DATA.home;
+  const now = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+  switch (appId) {
+    case "home":
+      return `
+        <div class="stat-grid">
+          <div class="stat-row"><span>Heure</span><strong>${now}</strong></div>
+          <div class="stat-row"><span>Pièce active</span><strong>${SMART_HOME_DATA.room}</strong></div>
+        </div>
+      `;
+    case "cameras":
+      return `
+        <div class="stat-grid">
+          <div class="stat-row"><span>Entrée</span><strong>Online</strong></div>
+          <div class="stat-row"><span>Garage</span><strong>Offline</strong></div>
+          <div class="stat-row"><span>Jardin</span><strong>Online</strong></div>
+        </div>
+      `;
+    case "terminal":
+      return `
+        <div class="stat-grid">
+          <div class="stat-row"><span>SSH</span><strong>ssh debian@server</strong></div>
+          <div class="stat-row"><span>Docker</span><strong>docker ps</strong></div>
+          <div class="stat-row"><span>Logs</span><strong>journalctl -u service</strong></div>
+        </div>
+      `;
+    case "network":
+      return `
+        <div class="stat-grid">
+          <div class="stat-row"><span>Ping</span><strong>${h.networkPing} ms</strong></div>
+          <div class="stat-row"><span>Down</span><strong>${h.networkDown} Mbps</strong></div>
+          <div class="stat-row"><span>Up</span><strong>${h.networkUp} Mbps</strong></div>
+        </div>
+      `;
+    case "energy":
+      return `
+        <div class="stat-grid">
+          <div class="stat-row"><span>Énergie</span><strong>${h.energyKwh} kWh</strong></div>
+          <div class="stat-row"><span>Coût</span><strong>€${h.energyCost.toFixed(2)}</strong></div>
+        </div>
+      `;
+    case "alerts":
+      return `
+        <div class="stat-grid">
+          <div class="stat-row"><span>Alertes</span><strong>${h.alertsCount}</strong></div>
+          <div class="stat-row"><span>Détail</span><strong>${h.alertsNote}</strong></div>
+        </div>
+      `;
+    case "scenes":
+      return `
+        <div class="stat-grid">
+          <div class="stat-row"><span>Home</span><strong>${SMART_HOME_DATA.switches.homeMode ? "ON" : "OFF"}</strong></div>
+          <div class="stat-row"><span>Away</span><strong>${SMART_HOME_DATA.switches.awayMode ? "ON" : "OFF"}</strong></div>
+          <div class="stat-row"><span>Relax</span><strong>${SMART_HOME_DATA.switches.relaxScene ? "ON" : "OFF"}</strong></div>
+        </div>
+      `;
+    case "music":
+      return `
+        <div class="stat-grid">
+          <div class="stat-row"><span>Titre</span><strong>${SMART_HOME_DATA.music.title}</strong></div>
+          <div class="stat-row"><span>Artiste</span><strong>${SMART_HOME_DATA.music.artist}</strong></div>
+          <div class="stat-row"><span>État</span><strong>${SMART_HOME_DATA.music.isPlaying ? "Lecture" : "Pause"}</strong></div>
+        </div>
+      `;
+    case "security":
+      return `
+        <div class="stat-grid">
+          <div class="stat-row"><span>Mode</span><strong>${SMART_HOME_DATA.switches.security ? "Armé" : "Normal"}</strong></div>
+          <div class="stat-row"><span>Portes</span><strong>Verrouillées</strong></div>
+        </div>
+      `;
+    case "storage":
+      return `
+        <div class="stat-grid">
+          <div class="stat-row"><span>NAS</span><strong>1.2 TB libres</strong></div>
+          <div class="stat-row"><span>Sauvegarde</span><strong>${h.backupStatus}</strong></div>
+        </div>
+      `;
+    case "weather":
+      return `
+        <div class="stat-grid">
+          <div class="stat-row"><span>Temp.</span><strong>${w.tempC}°C</strong></div>
+          <div class="stat-row"><span>Humidité</span><strong>${w.humidity}%</strong></div>
+          <div class="stat-row"><span>Vent</span><strong>${w.windKmh} km/h</strong></div>
+        </div>
+      `;
+    default:
+      return `<p class="muted">Aucune donnée disponible.</p>`;
+  }
+}
+
+function openQuickPanel(appId, title) {
+  if (!dom.quickPanel) return;
+  activeQuickApp = appId;
+  dom.quickPanelTitle.textContent = title;
+  dom.quickPanelBody.innerHTML = buildQuickPanelContent(appId);
+  const activeBtn = dom.iconButtons.find((btn) => btn.dataset.app === appId);
+  if (activeBtn) {
+    const dashboardRect = dom.appShell.querySelector(".dashboard")?.getBoundingClientRect();
+    const btnRect = activeBtn.getBoundingClientRect();
+    if (dashboardRect) {
+      const top = btnRect.top - dashboardRect.top;
+      dom.quickPanel.style.top = `${top}px`;
+    }
+  }
+  dom.quickPanel.classList.add("is-open");
+  dom.quickPanel.setAttribute("aria-hidden", "false");
+}
+
+function closeQuickPanel() {
+  if (!dom.quickPanel) return;
+  activeQuickApp = null;
+  dom.quickPanel.classList.remove("is-open");
+  dom.quickPanel.setAttribute("aria-hidden", "true");
 }
 
 function buildUndoSnapshot() {
@@ -317,12 +552,20 @@ function renderRoomPills() {
 }
 
 function renderSwitches() {
-  if (!roomDom.switches) return;
-  roomDom.switches.forEach((sw) => {
-    const key = sw.dataset.key;
+  if (roomDom.switches) {
+    roomDom.switches.forEach((sw) => {
+      const key = sw.dataset.key;
+      const isOn = Boolean(SMART_HOME_DATA.switches[key]);
+      sw.classList.toggle("is-on", isOn);
+      sw.setAttribute("aria-checked", String(isOn));
+    });
+  }
+
+  const sceneButtons = roomDom.active?.querySelectorAll(".scene-btn[data-key]") || [];
+  sceneButtons.forEach((btn) => {
+    const key = btn.dataset.key;
     const isOn = Boolean(SMART_HOME_DATA.switches[key]);
-    sw.classList.toggle("is-on", isOn);
-    sw.setAttribute("aria-checked", String(isOn));
+    btn.classList.toggle("is-active", isOn);
   });
 }
 
@@ -395,6 +638,50 @@ function renderLed() {
   roomDom.ledPreview.style.background = `linear-gradient(90deg, ${color}, rgba(255,255,255,0.65))`;
 }
 
+function renderBindings() {
+  if (!roomDom.active) return;
+
+  roomDom.active.querySelectorAll("[data-bind]").forEach((el) => {
+    const path = el.dataset.bind;
+    const value = getByPath(SMART_HOME_DATA, path);
+    if (value == null) return;
+    let display = value;
+    const decimals = el.dataset.decimals ? Number(el.dataset.decimals) : null;
+    if (typeof value === "number" && Number.isFinite(decimals)) {
+      display = value.toFixed(decimals);
+    }
+    const prefix = el.dataset.prefix || "";
+    const suffix = el.dataset.suffix || "";
+    el.textContent = `${prefix}${display}${suffix}`;
+  });
+
+  roomDom.active.querySelectorAll("[data-status]").forEach((el) => {
+    const value = getByPath(SMART_HOME_DATA, el.dataset.status);
+    if (value == null) return;
+    el.textContent = value;
+    el.classList.toggle("ok", value === "OK");
+    el.classList.toggle("fail", value === "FAIL");
+  });
+
+  roomDom.active.querySelectorAll("[data-meter]").forEach((el) => {
+    const value = getByPath(SMART_HOME_DATA, el.dataset.meter);
+    if (typeof value !== "number") return;
+    el.style.width = `${clamp(value, 0, 100)}%`;
+  });
+
+  roomDom.active.querySelectorAll("input.range[data-key]").forEach((input) => {
+    const value = getByPath(SMART_HOME_DATA, input.dataset.key);
+    if (value == null) return;
+    if (Number(input.value) !== Number(value)) {
+      input.value = value;
+    }
+  });
+
+  roomDom.active.querySelectorAll("[data-profile]").forEach((btn) => {
+    btn.classList.toggle("is-active", SMART_HOME_DATA.play.audioProfile === btn.dataset.profile);
+  });
+}
+
 function renderGlassControls() {
   const g = SMART_HOME_DATA.glass;
   dom.glassBlur.value = String(g.blur);
@@ -425,8 +712,12 @@ function renderAll() {
   renderMusic();
   renderThermostat();
   renderLed();
+  renderBindings();
   renderGlassControls();
   applyGlassThemeVariables();
+  if (dom.quickPanel && dom.quickPanel.classList.contains("is-open") && activeQuickApp) {
+    dom.quickPanelBody.innerHTML = buildQuickPanelContent(activeQuickApp);
+  }
 }
 
 function applyRippleEvent(el, event) {
@@ -470,7 +761,27 @@ function bindCoreInteractions() {
     btn.addEventListener("click", () => {
       dom.iconButtons.forEach((x) => x.classList.remove("is-active"));
       btn.classList.add("is-active");
+      const appId = btn.dataset.app;
+      const label = btn.getAttribute("aria-label") || "Quick App";
+      if (!appId) return;
+      if (activeQuickApp === appId && dom.quickPanel?.classList.contains("is-open")) {
+        closeQuickPanel();
+        return;
+      }
+      openQuickPanel(appId, label);
     });
+  });
+
+  if (dom.quickPanelClose) {
+    dom.quickPanelClose.addEventListener("click", closeQuickPanel);
+  }
+
+  document.addEventListener("click", (event) => {
+    if (!dom.quickPanel || !dom.quickPanel.classList.contains("is-open")) return;
+    const target = event.target;
+    const isInsidePanel = dom.quickPanel.contains(target);
+    const isIcon = target.closest?.(".icon-btn");
+    if (!isInsidePanel && !isIcon) closeQuickPanel();
   });
 
   dom.glassToggle.addEventListener("click", () => {
@@ -507,6 +818,7 @@ function bindCoreInteractions() {
   document.addEventListener("keydown", (event) => {
     const z = event.key.toLowerCase() === "z";
     const y = event.key.toLowerCase() === "y";
+    if (event.key === "Escape") closeQuickPanel();
     if ((event.ctrlKey || event.metaKey) && z && !event.shiftKey) {
       event.preventDefault();
       undo();
@@ -519,14 +831,21 @@ function bindCoreInteractions() {
 }
 
 function bindRoomControls() {
-  if (!roomDom.switches) return;
-  roomDom.switches.forEach((sw) => {
-    sw.addEventListener("click", () => {
-      pushHistory();
-      const key = sw.dataset.key;
-      SMART_HOME_DATA.switches[key] = !SMART_HOME_DATA.switches[key];
+  bindMusicSlider();
+  bindThermostat();
+  bindLedSlider();
+  bindRangeControls();
+  bindProfileButtons();
+
+  if (roomDom.switches) {
+    roomDom.switches.forEach((sw) => {
+      sw.addEventListener("click", () => {
+        pushHistory();
+        const key = sw.dataset.key;
+        SMART_HOME_DATA.switches[key] = !SMART_HOME_DATA.switches[key];
+      });
     });
-  });
+  }
 
   if (roomDom.playBtn) {
     roomDom.playBtn.addEventListener("click", () => {
@@ -535,9 +854,14 @@ function bindRoomControls() {
     });
   }
 
-  bindMusicSlider();
-  bindThermostat();
-  bindLedSlider();
+  const sceneButtons = roomDom.active?.querySelectorAll(".scene-btn[data-key]") || [];
+  sceneButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      pushHistory();
+      const key = btn.dataset.key;
+      SMART_HOME_DATA.switches[key] = !SMART_HOME_DATA.switches[key];
+    });
+  });
 }
 
 function bindMusicSlider() {
@@ -644,6 +968,39 @@ function bindLedSlider() {
   });
 }
 
+function bindRangeControls() {
+  if (!roomDom.active) return;
+  const ranges = [...roomDom.active.querySelectorAll("input.range[data-key]")];
+  ranges.forEach((input) => {
+    let dirty = false;
+    const update = () => {
+      if (!dirty) {
+        pushHistory();
+        dirty = true;
+      }
+      const value = Number(input.value);
+      setByPath(SMART_HOME_DATA, input.dataset.key, value);
+    };
+    const commit = () => {
+      dirty = false;
+    };
+    input.addEventListener("input", update);
+    input.addEventListener("change", commit);
+  });
+}
+
+function bindProfileButtons() {
+  if (!roomDom.active) return;
+  const profiles = [...roomDom.active.querySelectorAll("[data-profile]")];
+  if (!profiles.length) return;
+  profiles.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      pushHistory();
+      SMART_HOME_DATA.play.audioProfile = btn.dataset.profile;
+    });
+  });
+}
+
 function bindParallax() {
   if (!dom.roomStage) return;
   let raf = 0;
@@ -726,6 +1083,12 @@ function updateRoomTheme(room) {
   dom.root.style.setProperty("--theme-hue", theme.hue);
   dom.root.style.setProperty("--theme-sat", `${theme.sat}%`);
   dom.root.style.setProperty("--theme-light", `${theme.light}%`);
+  dom.body.classList.toggle("home-bg", room === "Home");
+  dom.body.classList.toggle("living-bg", room === "Living Room");
+  dom.body.classList.toggle("bath-bg", room === "Bath Room");
+  dom.body.classList.toggle("kitchen-bg", room === "Kitchen");
+  dom.body.classList.toggle("bed-bg", room === "Bed Room");
+  dom.body.classList.toggle("play-bg", room === "Play Room");
 }
 
 function switchRoom(room) {
@@ -787,6 +1150,7 @@ function cacheRoomDom() {
 
 function renderRoomPanels() {
   dom.roomStage.innerHTML = [
+    createHomePanel(),
     createLivingRoomPanel(),
     createBathRoomPanel(),
     createKitchenPanel(),
@@ -798,42 +1162,186 @@ function renderRoomPanels() {
   if (startPanel) startPanel.classList.add("is-active");
 }
 
-function createLivingRoomPanel() {
+function createHomePanel() {
   return `
-    <section class="room-panel" data-room="Living Room">
+    <section class="room-panel" data-room="Home">
       <section class="widget-grid">
         <section class="widget-col left">
           <article class="widget-card glass interactive intro-item" data-depth="1.2">
             <div class="row space-between align-start">
               <div>
-                <h1>Liquid Glass Smart Home</h1>
-                <p class="muted">Premium control panel for homelab devices</p>
+                <h1>Bonjour</h1>
+                <p class="muted">Bienvenue sur le dashboard du homelab</p>
               </div>
               <div class="clock-block">
                 <strong id="clock-time">--:--:--</strong>
                 <span id="clock-date" class="muted">--</span>
               </div>
             </div>
-            <ul class="stats-list">
-              <li><span>CPU</span><strong id="cpu-value">-- %</strong></li>
-              <li><span>RAM</span><strong id="ram-value">-- %</strong></li>
-              <li><span>Disk</span><strong id="disk-value">-- %</strong></li>
-              <li><span>Uptime</span><strong id="uptime-value">--</strong></li>
-            </ul>
-            <p id="error-message" class="error" role="alert"></p>
+            <p class="muted mt-sm">Suivi rapide des infos essentielles.</p>
           </article>
 
           <article class="widget-card glass interactive intro-item" data-depth="1.1">
-            <h2>Weather</h2>
+            <h2>Calendrier</h2>
+            <div class="calendar">
+              <div class="calendar-header">
+                <span>Mars 2026</span>
+                <span class="muted">Semaine 11</span>
+              </div>
+              <div class="calendar-grid">
+                <span class="cal-day">Lu</span>
+                <span class="cal-day">Ma</span>
+                <span class="cal-day">Me</span>
+                <span class="cal-day">Je</span>
+                <span class="cal-day">Ve</span>
+                <span class="cal-day">Sa</span>
+                <span class="cal-day">Di</span>
+                <span class="cal-date is-muted">24</span>
+                <span class="cal-date is-muted">25</span>
+                <span class="cal-date is-muted">26</span>
+                <span class="cal-date is-muted">27</span>
+                <span class="cal-date is-muted">28</span>
+                <span class="cal-date">1</span>
+                <span class="cal-date">2</span>
+                <span class="cal-date">3</span>
+                <span class="cal-date">4</span>
+                <span class="cal-date">5</span>
+                <span class="cal-date is-today">6</span>
+                <span class="cal-date">7</span>
+                <span class="cal-date">8</span>
+                <span class="cal-date">9</span>
+                <span class="cal-date">10</span>
+                <span class="cal-date">11</span>
+                <span class="cal-date">12</span>
+                <span class="cal-date">13</span>
+                <span class="cal-date">14</span>
+                <span class="cal-date">15</span>
+                <span class="cal-date">16</span>
+                <span class="cal-date">17</span>
+                <span class="cal-date">18</span>
+                <span class="cal-date">19</span>
+                <span class="cal-date">20</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="1.0">
+            <h2>Prochains événements</h2>
+            <ul class="simple-list">
+              <li>10:30 · Maintenance NAS</li>
+              <li>15:00 · Mise à jour routeur</li>
+              <li>20:00 · Vérif. sauvegardes</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="widget-col center">
+          <article class="widget-card glass interactive intro-item" data-depth="1.2">
+            <h2>Météo</h2>
             <div class="row space-between align-center weather-main">
               <p class="temp"><span id="weather-temp">23</span>&deg;C</p>
               <i class="fa-solid fa-cloud-sun weather-icon"></i>
             </div>
             <div class="chip-grid">
-              <div class="chip">Humidity: <strong id="weather-humidity">88%</strong></div>
-              <div class="chip">Wind: <strong id="weather-wind">13 km/h</strong></div>
+              <div class="chip">Humidité: <strong id="weather-humidity">88%</strong></div>
+              <div class="chip">Vent: <strong id="weather-wind">13 km/h</strong></div>
             </div>
             <div id="forecast-list" class="forecast-grid"></div>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="1.1">
+            <h2>Automatisations</h2>
+            <div class="automation-grid">
+              <button class="scene-btn automation-btn ripple" data-key="homeMode" type="button">Je suis à la maison</button>
+              <button class="scene-btn automation-btn ripple" data-key="awayMode" type="button">Je sors de la maison</button>
+            </div>
+            <p class="muted mt-sm">Active tes scénarios en un clic.</p>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="1.0">
+            <h2>État réseau</h2>
+            <div class="stat-grid">
+              <div class="stat-row"><span>Ping</span><strong data-bind="home.networkPing" data-suffix=" ms"></strong></div>
+              <div class="stat-row"><span>Download</span><strong data-bind="home.networkDown" data-suffix=" Mbps"></strong></div>
+              <div class="stat-row"><span>Upload</span><strong data-bind="home.networkUp" data-suffix=" Mbps"></strong></div>
+            </div>
+          </article>
+        </section>
+
+        <section class="widget-col right">
+          <article class="widget-card glass interactive intro-item" data-depth="1.0">
+            <h2>Musique</h2>
+            <div class="music-grid">
+              <div class="cover" aria-label="Album cover"></div>
+              <div>
+                <strong id="track-title">Never Gonna Give You Up</strong>
+                <p id="track-artist" class="muted">Rick Astley</p>
+                <div id="music-progress" class="track" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+                  <span id="music-fill" class="track-fill"></span>
+                  <span id="music-thumb" class="track-thumb"></span>
+                </div>
+                <div class="row gap-sm mt-sm">
+                  <button class="mini-btn ripple" type="button"><i class="fa-solid fa-backward-step"></i></button>
+                  <button id="play-btn" class="mini-btn ripple" type="button"><i class="fa-solid fa-play"></i></button>
+                  <button class="mini-btn ripple" type="button"><i class="fa-solid fa-forward-step"></i></button>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="0.95">
+            <h2>Dernière sauvegarde</h2>
+            <div class="status-row">
+              <span data-bind="home.backupTime"></span>
+              <span class="status-pill" data-status="home.backupStatus"></span>
+            </div>
+            <p class="muted mt-sm">Prochaine vérification à 23:00.</p>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="0.9">
+            <h2>Alertes en cours</h2>
+            <div class="status-row">
+              <strong data-bind="home.alertsCount"></strong>
+              <a class="link-pill" href="#">Voir</a>
+            </div>
+            <p class="muted mt-sm" data-bind="home.alertsNote"></p>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="0.85">
+            <h2>Énergie du jour</h2>
+            <div class="energy-bar"><span data-meter="home.energyPct"></span></div>
+            <div class="status-row mt-sm">
+              <span data-bind="home.energyKwh" data-decimals="1" data-suffix=" kWh"></span>
+              <strong data-bind="home.energyCost" data-decimals="2" data-prefix="€"></strong>
+            </div>
+          </article>
+        </section>
+      </section>
+    </section>
+  `;
+}
+
+function createLivingRoomPanel() {
+  return `
+    <section class="room-panel" data-room="Living Room">
+      <section class="widget-grid">
+        <section class="widget-col left">
+          <article class="widget-card glass interactive intro-item" data-depth="1.2">
+            <h1>Living Room</h1>
+            <p class="muted">Comfort & entertainment overview</p>
+            <div class="presence-row">
+              <span class="room-tag"><i class="fa-solid fa-person-walking"></i> Présence</span>
+              <span class="muted" data-bind="living.presenceLast" data-prefix="Détecté il y a "></span>
+            </div>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="1.1">
+            <h2>Qualité de l’air</h2>
+            <div class="stat-grid">
+              <div class="stat-row"><span>CO₂</span><strong data-bind="living.airCo2" data-suffix=" ppm"></strong></div>
+              <div class="stat-row"><span>Humidité</span><strong data-bind="living.airHumidity" data-suffix="%"></strong></div>
+              <div class="stat-row"><span>Temp.</span><strong data-bind="living.airTemp" data-decimals="1" data-suffix="°C"></strong></div>
+            </div>
           </article>
 
           <article class="widget-card glass interactive intro-item" data-depth="1.0">
@@ -862,6 +1370,14 @@ function createLivingRoomPanel() {
             <h2>Live Camera</h2>
             <div class="camera-frame">
               <span class="rec"><span class="dot"></span> REC</span>
+            </div>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="1.35">
+            <h2>Éclairage principal</h2>
+            <div class="slider-row">
+              <input class="range" type="range" min="0" max="100" value="72" data-key="living.mainLight" />
+              <span class="range-value" data-bind="living.mainLight" data-suffix="%"></span>
             </div>
           </article>
 
@@ -896,6 +1412,14 @@ function createLivingRoomPanel() {
             </div>
           </article>
 
+          <article class="widget-card glass interactive intro-item" data-depth="1.2">
+            <h2>Consommation TV</h2>
+            <div class="meter">
+              <div class="meter-bar"><span style="width: 46%"></span></div>
+              <div class="meter-row"><span>Aujourd’hui</span><strong data-bind="living.tvTime"></strong></div>
+            </div>
+          </article>
+
           <article class="widget-card glass interactive led-card intro-item" id="led-card" data-depth="1.4">
             <h2>Ambient LED</h2>
             <div id="led-track" class="led-track" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" tabindex="0">
@@ -915,41 +1439,12 @@ function createLivingRoomPanel() {
             </div>
           </article>
 
-          <article class="widget-card glass interactive intro-item home-intel" data-depth="1.15">
-            <h2>Home Intelligence</h2>
-            <div class="intel-chart-wrap">
-              <svg class="intel-chart" viewBox="0 0 320 120" role="img" aria-label="Energy usage chart">
-                <polyline class="intel-grid-line" points="0,20 320,20"></polyline>
-                <polyline class="intel-grid-line" points="0,60 320,60"></polyline>
-                <polyline class="intel-grid-line" points="0,100 320,100"></polyline>
-                <polyline class="intel-area" points="0,105 24,92 48,96 72,70 96,74 120,56 144,62 168,48 192,57 216,38 240,42 264,26 288,34 312,18 320,20 320,120 0,120"></polyline>
-                <polyline class="intel-line" points="0,105 24,92 48,96 72,70 96,74 120,56 144,62 168,48 192,57 216,38 240,42 264,26 288,34 312,18"></polyline>
-              </svg>
-            </div>
-
-            <div class="intel-actions">
-              <button class="scene-btn ripple" type="button">Sleep</button>
-              <button class="scene-btn ripple" type="button">Away</button>
-              <button class="scene-btn ripple" type="button">Security</button>
-            </div>
-
-            <p class="intel-note">All systems normal - 12 devices connected</p>
-          </article>
-
-          <article class="widget-card glass interactive intro-item" data-depth="1.05">
-            <h2>Energy Monitoring</h2>
-            <div class="meter">
-              <div class="meter-bar"><span style="width: 62%"></span></div>
-              <div class="meter-row"><span>Today</span><strong>12.4 kWh</strong></div>
-            </div>
-          </article>
-
           <article class="widget-card glass interactive intro-item" data-depth="1.0">
             <h2>Quick Scenes</h2>
             <div class="scene-grid">
-              <button class="scene-btn ripple" type="button">Relax</button>
-              <button class="scene-btn ripple" type="button">Cinema</button>
-              <button class="scene-btn ripple" type="button">Focus</button>
+              <button class="scene-btn ripple" data-key="movieNight" type="button">Movie Night</button>
+              <button class="scene-btn ripple" data-key="readingScene" type="button">Lecture</button>
+              <button class="scene-btn ripple" data-key="relaxScene" type="button">Relax</button>
             </div>
           </article>
         </section>
@@ -976,24 +1471,53 @@ function createBathRoomPanel() {
           </article>
 
           <article class="widget-card glass interactive intro-item" data-depth="1.05">
-            <h2>Water Temperature</h2>
-            <div class="slider-row">
-              <input class="range" type="range" min="30" max="42" value="37" />
-              <span class="range-value">37&deg;C</span>
+            <h2>Qualité de l’eau</h2>
+            <div class="stat-grid">
+              <div class="stat-row"><span>Température</span><strong data-bind="bath.waterTemp" data-suffix="°C"></strong></div>
+              <div class="stat-row"><span>Dureté</span><strong data-bind="bath.waterHardness" data-suffix=" °fH"></strong></div>
+            </div>
+            <div class="slider-row mt-sm">
+              <input class="range" type="range" min="30" max="42" value="37" data-key="bath.waterTemp" />
+              <span class="range-value" data-bind="bath.waterTemp" data-suffix="°C"></span>
+            </div>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="1.0">
+            <h2>Conso d’eau</h2>
+            <div class="meter">
+              <div class="meter-bar"><span data-meter="bath.waterTodayPct"></span></div>
+              <div class="meter-row"><span>Aujourd’hui</span><strong data-bind="bath.waterToday" data-suffix=" L"></strong></div>
+            </div>
+            <div class="meter mt-sm">
+              <div class="meter-bar"><span data-meter="bath.waterWeekPct"></span></div>
+              <div class="meter-row"><span>Semaine</span><strong data-bind="bath.waterWeek" data-suffix=" L"></strong></div>
             </div>
           </article>
         </section>
 
         <section class="widget-col center">
           <article class="widget-card glass interactive intro-item" data-depth="1.3">
-            <h2>Humidity Control</h2>
+            <h2>Ventilation intelligente</h2>
             <div class="meter">
               <div class="meter-bar"><span style="width: 58%"></span></div>
-              <div class="meter-row"><span>Ventilation</span><strong>58%</strong></div>
+              <div class="meter-row"><span>Auto ON</span><strong data-bind="bath.ventThreshold" data-prefix="> " data-suffix="%"></strong></div>
             </div>
+            <p class="muted mt-sm">Actif quand l’humidité dépasse 60%.</p>
           </article>
 
           <article class="widget-card glass interactive intro-item" data-depth="1.2">
+            <h2>Routine matin</h2>
+            <div class="status-row">
+              <span>Rappel</span>
+              <span class="status-pill" data-bind="bath.morningReminder"></span>
+            </div>
+            <div class="slider-row mt-sm">
+              <input class="range" type="range" min="5" max="30" value="12" data-key="bath.morningMinutes" />
+              <span class="range-value" data-bind="bath.morningMinutes" data-suffix=" min"></span>
+            </div>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="1.1">
             <h2>Towel Warmer</h2>
             <div class="switch-item">
               <span>Heated Towels</span>
@@ -1006,19 +1530,19 @@ function createBathRoomPanel() {
           <article class="widget-card glass interactive intro-item" data-depth="1.1">
             <h2>Steam Boost</h2>
             <div class="scene-grid">
-              <button class="scene-btn ripple" type="button">Spa</button>
-              <button class="scene-btn ripple" type="button">Clean</button>
-              <button class="scene-btn ripple" type="button">Quick Dry</button>
+              <button class="scene-btn ripple" data-key="bathSpa" type="button">Spa</button>
+              <button class="scene-btn ripple" data-key="bathClean" type="button">Clean</button>
+              <button class="scene-btn ripple" data-key="bathDry" type="button">Quick Dry</button>
             </div>
           </article>
 
           <article class="widget-card glass interactive intro-item" data-depth="1.0">
-            <h2>Mirror Display</h2>
-            <p class="muted">Weather, news, and daily tasks synced.</p>
-            <div class="chip-grid">
-              <div class="chip">UV Index: 3</div>
-              <div class="chip">Air Quality: Good</div>
+            <h2>Éclairage miroir</h2>
+            <div class="slider-row">
+              <input class="range" type="range" min="2500" max="6500" value="4200" data-key="bath.mirrorTempK" />
+              <span class="range-value" data-bind="bath.mirrorTempK" data-suffix="K"></span>
             </div>
+            <p class="muted mt-sm">Chaud ↔ Froid</p>
           </article>
         </section>
       </section>
@@ -1043,35 +1567,54 @@ function createKitchenPanel() {
           </article>
 
           <article class="widget-card glass interactive intro-item" data-depth="1.1">
-            <h2>Countertop Lighting</h2>
-            <input class="range" type="range" min="0" max="100" value="68" />
+            <h2>Plan de repas</h2>
+            <ul class="simple-list">
+              <li>Ce soir · Saumon & quinoa</li>
+              <li>Demain · Pâtes pesto</li>
+              <li>Jeu. · Salade complète</li>
+            </ul>
           </article>
         </section>
 
         <section class="widget-col center">
           <article class="widget-card glass interactive intro-item" data-depth="1.3">
-            <h2>Oven Timer</h2>
-            <div class="dial">
-              <div class="dial-center">25:00</div>
+            <h2>Détection fumée/gaz</h2>
+            <div class="status-row">
+              <span>Statut</span>
+              <span class="status-pill" data-status="kitchen.smokeStatus"></span>
             </div>
+            <p class="muted mt-sm">Aucune alerte active.</p>
           </article>
 
           <article class="widget-card glass interactive intro-item" data-depth="1.2">
-            <h2>Smart Coffee</h2>
-            <button class="scene-btn ripple">Brew Now</button>
-            <div class="slider-row">
-              <input class="range" type="range" min="1" max="5" value="3" />
-              <span class="range-value">Intensity 3</span>
+            <h2>Qualité de l’air</h2>
+            <div class="stat-grid">
+              <div class="stat-row"><span>CO₂</span><strong data-bind="kitchen.airCo2" data-suffix=" ppm"></strong></div>
+              <div class="stat-row"><span>Particules</span><strong data-bind="kitchen.airPm" data-prefix="PM2.5 · "></strong></div>
+              <div class="stat-row"><span>Humidité</span><strong data-bind="kitchen.airHumidity" data-suffix="%"></strong></div>
             </div>
           </article>
         </section>
 
         <section class="widget-col right">
           <article class="widget-card glass interactive intro-item" data-depth="1.1">
-            <h2>Fridge Inventory</h2>
+            <h2>Conso appareils</h2>
             <div class="meter">
-              <div class="meter-bar"><span style="width: 74%"></span></div>
-              <div class="meter-row"><span>Stock Level</span><strong>74%</strong></div>
+              <div class="meter-bar"><span style="width: 46%"></span></div>
+              <div class="meter-row"><span>Four</span><strong data-bind="kitchen.ovenKwh" data-decimals="1" data-suffix=" kWh"></strong></div>
+            </div>
+            <div class="meter mt-sm">
+              <div class="meter-bar"><span style="width: 32%"></span></div>
+              <div class="meter-row"><span>Frigo</span><strong data-bind="kitchen.fridgeKwh" data-decimals="1" data-suffix=" kWh"></strong></div>
+            </div>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="1.0">
+            <h2>État poubelles</h2>
+            <div class="stat-grid">
+              <div class="stat-row"><span>Recyclage</span><strong data-bind="kitchen.binRecycle"></strong></div>
+              <div class="stat-row"><span>Tri</span><strong data-bind="kitchen.binTri"></strong></div>
+              <div class="stat-row"><span>Sortie</span><strong data-bind="kitchen.binOut"></strong></div>
             </div>
           </article>
         </section>
@@ -1087,39 +1630,94 @@ function createBedRoomPanel() {
         <section class="widget-col left">
           <article class="widget-card glass interactive intro-item" data-depth="1.2">
             <h1>Bed Room</h1>
-            <p class="muted">Rest & recovery analytics</p>
-            <div class="sleep-chart">
-              <div class="sleep-bar" style="height: 40%"></div>
-              <div class="sleep-bar" style="height: 70%"></div>
-              <div class="sleep-bar" style="height: 55%"></div>
-              <div class="sleep-bar" style="height: 80%"></div>
-              <div class="sleep-bar" style="height: 60%"></div>
-            </div>
+            <p class="muted">Calme, routine, et confort nocturne</p>
           </article>
 
           <article class="widget-card glass interactive intro-item" data-depth="1.1">
-            <h2>Curtain Control</h2>
-            <div class="vertical-slider">
-              <div class="vertical-track"><span style="height: 55%"></span></div>
+            <h2>Mode nuit</h2>
+            <div class="switch-item">
+              <span>Activé</span>
+              <button class="switch ripple" data-key="nightMode" type="button" role="switch" aria-checked="false"></button>
+            </div>
+            <div class="status-row mt-sm">
+              <span>Début</span>
+              <strong data-bind="bed.nightStart"></strong>
+            </div>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="1.0">
+            <h2>Qualité de l’air</h2>
+            <div class="stat-grid">
+              <div class="stat-row"><span>CO₂</span><strong data-bind="bed.airCo2" data-suffix=" ppm"></strong></div>
+              <div class="stat-row"><span>Humidité</span><strong data-bind="bed.airHumidity" data-suffix="%"></strong></div>
             </div>
           </article>
         </section>
 
         <section class="widget-col center">
           <article class="widget-card glass interactive intro-item" data-depth="1.3">
-            <h2>Alarm Clock</h2>
-            <div class="dial">
-              <div class="dial-center">06:30</div>
+            <h2>Température chambre</h2>
+            <div class="status-row">
+              <span>Actuelle</span>
+              <strong data-bind="bed.roomTemp" data-decimals="1" data-suffix="°C"></strong>
+            </div>
+            <div class="slider-row mt-sm">
+              <input class="range" type="range" min="16" max="24" value="20" data-key="bed.roomTempSet" />
+              <span class="range-value" data-bind="bed.roomTempSet" data-suffix="°C"></span>
+            </div>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="1.2">
+            <h2>Rideaux / volets</h2>
+            <div class="slider-row">
+              <input class="range" type="range" min="0" max="100" value="55" data-key="bed.curtainPercent" />
+              <span class="range-value" data-bind="bed.curtainPercent" data-suffix="%"></span>
+            </div>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="1.1">
+            <h2>Lumière d’ambiance</h2>
+            <div class="slider-row">
+              <input class="range" type="range" min="0" max="100" value="30" data-key="bed.ambientLight" />
+              <span class="range-value" data-bind="bed.ambientLight" data-suffix="%"></span>
+            </div>
+            <div class="slider-row mt-sm">
+              <input class="range" type="range" min="2500" max="6500" value="4200" data-key="bed.ambientWarmth" />
+              <span class="range-value" data-bind="bed.ambientWarmth" data-suffix="K"></span>
             </div>
           </article>
         </section>
 
         <section class="widget-col right">
           <article class="widget-card glass interactive intro-item" data-depth="1.1">
-            <h2>Sunrise Simulation</h2>
+            <h2>Alarmes actives</h2>
+            <div class="status-row">
+              <span>Total</span>
+              <strong data-bind="bed.alarmsCount"></strong>
+            </div>
+            <ul class="simple-list mt-sm">
+              <li data-bind="bed.alarm1"></li>
+              <li data-bind="bed.alarm2"></li>
+            </ul>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="1.0">
+            <h2>Statut sommeil</h2>
+            <div class="stat-grid">
+              <div class="stat-row"><span>Durée</span><strong data-bind="bed.sleepDuration"></strong></div>
+              <div class="stat-row"><span>Réveils</span><strong data-bind="bed.sleepAwakenings"></strong></div>
+            </div>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="0.95">
+            <h2>Bruit blanc</h2>
             <div class="switch-item">
-              <span>Enabled</span>
-              <button class="switch ripple" data-key="sunrise" type="button" role="switch" aria-checked="false"></button>
+              <span>Actif</span>
+              <button class="switch ripple" data-key="whiteNoise" type="button" role="switch" aria-checked="false"></button>
+            </div>
+            <div class="slider-row mt-sm">
+              <input class="range" type="range" min="0" max="100" value="40" data-key="bed.whiteNoiseLevel" />
+              <span class="range-value" data-bind="bed.whiteNoiseLevel" data-suffix="%"></span>
             </div>
           </article>
         </section>
@@ -1136,40 +1734,58 @@ function createPlayRoomPanel() {
           <article class="widget-card glass interactive intro-item" data-depth="1.2">
             <h1>Play Room</h1>
             <p class="muted">Gaming & streaming control</p>
-            <div class="meter">
-              <div class="meter-bar"><span style="width: 72%"></span></div>
-              <div class="meter-row"><span>CPU</span><strong>72%</strong></div>
+            <div class="temp-graph">
+              <div class="temp-line"><span class="temp-fill cpu" data-meter="play.cpuTempPct"></span></div>
+              <div class="temp-line"><span class="temp-fill gpu" data-meter="play.gpuTempPct"></span></div>
             </div>
-            <div class="meter mt-sm">
-              <div class="meter-bar"><span style="width: 64%"></span></div>
-              <div class="meter-row"><span>GPU</span><strong>64%</strong></div>
+            <div class="stat-grid mt-sm">
+              <div class="stat-row"><span>CPU Temp</span><strong data-bind="play.cpuTemp" data-suffix="°C"></strong></div>
+              <div class="stat-row"><span>GPU Temp</span><strong data-bind="play.gpuTemp" data-suffix="°C"></strong></div>
+              <div class="stat-row"><span>Alertes</span><strong data-bind="play.alerts"></strong></div>
+            </div>
+          </article>
+
+          <article class="widget-card glass interactive intro-item" data-depth="1.1">
+            <h2>Latence réseau</h2>
+            <div class="stat-grid">
+              <div class="stat-row"><span>Ping</span><strong data-bind="play.ping" data-suffix=" ms"></strong></div>
+              <div class="stat-row"><span>Jitter</span><strong data-bind="play.jitter" data-suffix=" ms"></strong></div>
             </div>
           </article>
         </section>
 
         <section class="widget-col center">
           <article class="widget-card glass interactive intro-item" data-depth="1.3">
-            <h2>RGB Sync</h2>
-            <input class="color-wheel" type="color" value="#ff66cc" />
-            <div class="chip-grid mt-sm">
-              <div class="chip">Zone A</div>
-              <div class="chip">Zone B</div>
+            <h2>Profil audio</h2>
+            <div class="scene-grid">
+              <button class="scene-btn ripple" data-profile="game" type="button">Jeu</button>
+              <button class="scene-btn ripple" data-profile="movie" type="button">Film</button>
+              <button class="scene-btn ripple" data-profile="night" type="button">Nuit</button>
             </div>
           </article>
 
           <article class="widget-card glass interactive intro-item" data-depth="1.2">
-            <h2>Sound System</h2>
-            <div class="equalizer">
-              ${Array.from({ length: 12 }).map((_, i) => `<span class="eq-bar" style="--h:${40 + i * 3}%"></span>`).join("")}
+            <h2>Mode streaming</h2>
+            <div class="scene-grid">
+              <button class="scene-btn ripple" data-key="streamObs" type="button">OBS</button>
+              <button class="scene-btn ripple" data-key="streamLight" type="button">Lumière</button>
+              <button class="scene-btn ripple" data-key="streamMulti" type="button">Multi-cam</button>
             </div>
+            <p class="muted mt-sm">Scènes rapides de diffusion.</p>
           </article>
         </section>
 
         <section class="widget-col right">
           <article class="widget-card glass interactive intro-item" data-depth="1.1">
-            <h2>Stream Mode</h2>
-            <button class="scene-btn ripple" data-key="streamMode" type="button">Activate</button>
-            <p class="muted mt-sm">Optimizes lighting, audio, and capture.</p>
+            <h2>Stockage console</h2>
+            <div class="meter">
+              <div class="meter-bar"><span data-meter="play.consoleFreePct"></span></div>
+              <div class="meter-row"><span>Libre</span><strong data-bind="play.consoleFree" data-suffix=" GB"></strong></div>
+            </div>
+            <div class="meter mt-sm">
+              <div class="meter-bar"><span data-meter="play.consoleUsedPct"></span></div>
+              <div class="meter-row"><span>Utilisé</span><strong data-bind="play.consoleUsed" data-suffix=" GB"></strong></div>
+            </div>
           </article>
         </section>
       </section>

@@ -43,21 +43,44 @@
       </aside>
 
       <!-- Top room navigation -->
-      <nav class="top-pills glass" aria-label="Room navigation">
-        <button class="pill is-active" type="button" data-room="Living Room">Living Room</button>
-        <button class="pill" type="button" data-room="Bath Room">Bath Room</button>
-        <button class="pill" type="button" data-room="Kitchen">Kitchen</button>
-        <button class="pill" type="button" data-room="Bed Room">Bed Room</button>
-        <button class="pill" type="button" data-room="Play Room">Play Room</button>
-      </nav>
+      <div class="top-pills-wrap">
+        <nav class="top-pills glass" aria-label="Room navigation">
+          <button class="pill home-pill" type="button" data-room="Home" aria-label="Home">
+            <i class="fa-solid fa-house"></i>
+            <span>Home</span>
+          </button>
+          <button class="pill is-active" type="button" data-room="Living Room">Living Room</button>
+          <button class="pill" type="button" data-room="Bath Room">Bath Room</button>
+          <button class="pill" type="button" data-room="Kitchen">Kitchen</button>
+          <button class="pill" type="button" data-room="Bed Room">Bed Room</button>
+          <button class="pill" type="button" data-room="Play Room">Play Room</button>
+        </nav>
+      </div>
 
       <section class="dashboard glass">
         <!-- Floating sidebar -->
         <aside class="sidebar glass" aria-label="Quick apps">
-          <button class="icon-btn is-active ripple" type="button" aria-label="Home"><i class="fa-solid fa-house"></i></button>
-          <button class="icon-btn ripple" type="button" aria-label="Calendar"><i class="fa-regular fa-calendar"></i></button>
-          <button class="icon-btn ripple" type="button" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></button>
-          <button class="icon-btn ripple" type="button" aria-label="Browser"><i class="fa-solid fa-globe"></i></button>
+          <button class="icon-btn is-active ripple" type="button" aria-label="Home" data-app="home"><i class="fa-solid fa-house"></i></button>
+          <button class="icon-btn ripple" type="button" aria-label="Cameras" data-app="cameras"><i class="fa-solid fa-video"></i></button>
+          <button class="icon-btn ripple" type="button" aria-label="Terminal" data-app="terminal"><i class="fa-solid fa-terminal"></i></button>
+          <button class="icon-btn ripple" type="button" aria-label="Network" data-app="network"><i class="fa-solid fa-wifi"></i></button>
+          <button class="icon-btn ripple" type="button" aria-label="Energy" data-app="energy"><i class="fa-solid fa-bolt"></i></button>
+          <button class="icon-btn ripple" type="button" aria-label="Alerts" data-app="alerts"><i class="fa-solid fa-bell"></i></button>
+          <button class="icon-btn ripple" type="button" aria-label="Scenes" data-app="scenes"><i class="fa-solid fa-sliders"></i></button>
+          <button class="icon-btn ripple" type="button" aria-label="Music" data-app="music"><i class="fa-solid fa-music"></i></button>
+          <button class="icon-btn ripple" type="button" aria-label="Security" data-app="security"><i class="fa-solid fa-shield-halved"></i></button>
+          <button class="icon-btn ripple" type="button" aria-label="Storage" data-app="storage"><i class="fa-solid fa-hard-drive"></i></button>
+          <button class="icon-btn ripple" type="button" aria-label="Weather" data-app="weather"><i class="fa-solid fa-cloud-sun"></i></button>
+        </aside>
+
+        <aside id="quick-panel" class="quick-panel glass" role="dialog" aria-hidden="true" aria-label="Quick app">
+          <div class="quick-panel-head">
+            <h3 id="quick-panel-title">Quick App</h3>
+            <button id="quick-panel-close" class="mini-btn ripple" type="button" aria-label="Close">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div id="quick-panel-body" class="quick-panel-body"></div>
         </aside>
 
         <!-- Room stage (injected by JS) -->
