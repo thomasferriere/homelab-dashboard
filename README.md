@@ -111,3 +111,10 @@ SMART_HOME_DATA.led.intensity = 85;
 - Remplacer polling `/api/stats` par WebSocket
 - Connecter les widgets à Home Assistant / MQTT
 - Ajouter tests UI (Playwright) + linting ESLint/Stylelint
+
+## À propos de ce projet
+
+Interface conçue et développée avec outils modernes incluant l'assistance IA. 
+
+Le design, l'architecture frontend et les décisions UX/micro-interactions sont les miens. 
+L'IA a aidé sur l'implémentation technique.
